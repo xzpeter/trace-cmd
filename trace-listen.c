@@ -31,9 +31,11 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "trace-local.h"
 #include "trace-msg.h"
+#include "trace-listen.h"
 
 #define MAX_OPTION_SIZE 4096
 
@@ -637,7 +639,8 @@ static int put_together_file(int cpus, int ofd, const char *node,
 	return -ENOMEM;
 }
 
-static int process_client(const char *node, const char *port, int fd)
+int tracecmd_listen_process_client(const char *node,
+				   const char *port, int fd)
 {
 	int *pid_array;
 	int pagesize;
@@ -702,7 +705,8 @@ static int do_fork(int cfd)
 }
 
 static int do_connection(int cfd, struct sockaddr_storage *peer_addr,
-			  socklen_t peer_addr_len)
+			 socklen_t peer_addr_len,
+			 tracecmd_listen_handler handler)
 {
 	char host[NI_MAXHOST], service[NI_MAXSERV];
 	int s;
@@ -726,7 +730,8 @@ static int do_connection(int cfd, struct sockaddr_storage *peer_addr,
 		return -1;
 	}
 
-	process_client(host, service, cfd);
+	assert(handler);
+	handler(host, service, cfd);
 
 	close(cfd);
 
@@ -806,7 +811,7 @@ static void clean_up(int sig)
 	} while (ret > 0);
 }
 
-static void do_accept_loop(int sfd)
+static void do_accept_loop(int sfd, tracecmd_listen_handler handler)
 {
 	struct sockaddr_storage peer_addr;
 	socklen_t peer_addr_len;
@@ -823,7 +828,8 @@ static void do_accept_loop(int sfd)
 		if (cfd < 0)
 			pdie("connecting");
 
-		pid = do_connection(cfd, &peer_addr, peer_addr_len);
+		pid = do_connection(cfd, &peer_addr,
+				    peer_addr_len, handler);
 		if (pid > 0)
 			add_process(pid);
 
@@ -852,11 +858,14 @@ static void make_pid_file(void)
 	close(fd);
 }
 
-static void do_listen(char *port)
+void tracecmd_listen_start(char *port, tracecmd_listen_handler handler)
 {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
 	int sfd, s;
+
+	signal_setup(SIGINT, finish);
+	signal_setup(SIGTERM, finish);
 
 	if (!debug)
 		signal_setup(SIGCHLD, clean_up);
@@ -892,7 +901,7 @@ static void do_listen(char *port)
 	if (listen(sfd, backlog) < 0)
 		pdie("listen");
 
-	do_accept_loop(sfd);
+	do_accept_loop(sfd, handler);
 
 	kill_clients();
 
@@ -989,13 +998,10 @@ void trace_listen(int argc, char **argv)
 	if (daemon)
 		start_daemon();
 
-	signal_setup(SIGINT, finish);
-	signal_setup(SIGTERM, finish);
-
 	if (debug)
 		tracecmd_msg_set_debug(debug);
 
-	do_listen(port);
+	tracecmd_listen_start(port, tracecmd_listen_process_client);
 
 	return;
 }
