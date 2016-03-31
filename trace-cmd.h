@@ -284,6 +284,7 @@ void tracecmd_msg_send_close_msg(void);
 int tracecmd_msg_initial_setting(int fd, int *cpus, int *pagesize);
 int tracecmd_msg_send_port_array(int fd, int total_cpus, int *ports);
 int tracecmd_msg_collect_metadata(int ifd, int ofd);
+int tracecmd_msg_svr_handle_record_req(int fd);
 
 /* msg debugging */
 void tracecmd_msg_set_debug(int debug);

@@ -39,7 +39,11 @@
 static int tracecmd_server_handle_clients(const char *node,
 					  const char *port, int fd)
 {
-	return 0;
+	int ret;
+
+	plog("Handling tracing request from %s:%s\n", node, port);
+
+	return tracecmd_msg_svr_handle_record_req(fd);
 }
 
 void trace_server(int argc, char **argv)

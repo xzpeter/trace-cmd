@@ -56,6 +56,8 @@ typedef __be32 be32;
 #define TRACECMD_OPT_MIN_LEN		\
 			((sizeof(be32)) + (sizeof(be32)) + (sizeof(be32)))
 
+#define TRACECMD_MSG_SVR_RECORD_MIN_LEN  (TRACECMD_MSG_HDR_LEN + sizeof(be32))
+
 
 #define CPU_MAX				256
 
@@ -110,12 +112,24 @@ struct tracecmd_msg_error {
 	} data;
 } __attribute__((packed));
 
+struct tracecmd_msg_svr_record_req {
+	/* length of param[] */
+	be32 size;
+	char param[0];
+} __attribute__((packed));
+
 enum tracecmd_msg_cmd {
 	MSG_CLOSE	= 1,
 	MSG_TINIT	= 4,
 	MSG_RINIT	= 5,
 	MSG_SENDMETA	= 6,
 	MSG_FINMETA	= 7,
+
+	/* trace-cmd server msgs */
+	MSG_SVR_RECORD_REQ = 8,
+	MSG_SVR_RECORD_ACK = 9,
+
+	MSG_MAX,
 };
 
 struct tracecmd_msg {
@@ -126,6 +140,7 @@ struct tracecmd_msg {
 		struct tracecmd_msg_rinit rinit;
 		struct tracecmd_msg_meta meta;
 		struct tracecmd_msg_error err;
+		struct tracecmd_msg_svr_record_req rec_req;
 	} data;
 } __attribute__((packed));
 
@@ -343,7 +358,7 @@ static int tracecmd_msg_send(int fd, u32 cmd)
 	struct tracecmd_msg *msg = NULL;
 	int ret = 0;
 
-	if (cmd > MSG_FINMETA) {
+	if (cmd >= MSG_MAX) {
 		plog("Unsupported command: %d\n", cmd);
 		return -EINVAL;
 	}
@@ -735,4 +750,35 @@ int tracecmd_msg_collect_metadata(int ifd, int ofd)
 error:
 	error_operation_for_server(msg);
 	return ret;
+}
+
+int tracecmd_msg_svr_handle_record_req(int fd)
+{
+	u32 cmd;
+	char buf[TRACECMD_MSG_MAX_LEN];
+	int ret, size;
+	char *param;
+	struct tracecmd_msg *msg = (struct tracecmd_msg *)buf;
+
+	ret = tracecmd_msg_recv_wait(fd, msg);
+
+	cmd = ntohl(msg->cmd);
+	if (cmd != MSG_SVR_RECORD_REQ) {
+		plog("trace-cmd server received unknown cmd %d\n", cmd);
+		return -1;
+	}
+
+	/* We got a tracecmd msg with a tracing request */
+
+	size = ntohl(msg->size);
+	if (size <= TRACECMD_MSG_SVR_RECORD_MIN_LEN) {
+		plog("MSG_SVR_RECORD_REQ size %u too small\n", size);
+		return -1;
+	}
+
+	param = msg->data.rec_req.param;
+
+	plog("RECORD_REQUEST GOT: %s\n", param);
+
+	return 0;
 }
