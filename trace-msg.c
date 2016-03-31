@@ -56,7 +56,8 @@ typedef __be32 be32;
 #define TRACECMD_OPT_MIN_LEN		\
 			((sizeof(be32)) + (sizeof(be32)) + (sizeof(be32)))
 
-#define TRACECMD_MSG_SVR_RECORD_MIN_LEN  (TRACECMD_MSG_HDR_LEN + sizeof(be32))
+#define TRACECMD_MSG_SVR_RECORD_HDR_LEN  (TRACECMD_MSG_HDR_LEN + sizeof(be32))
+#define TRACECMD_MSG_SVR_RECORD_MIN_LEN  (TRACECMD_MSG_SVR_RECORD_HDR_LEN)
 
 
 #define CPU_MAX				256
@@ -306,9 +307,11 @@ static u32 tracecmd_msg_get_body_length(u32 cmd)
 		return sizeof(msg->data.rinit.cpus)
 		       + sizeof(msg->data.rinit.port_array);
 	case MSG_SENDMETA:
+	case MSG_SVR_RECORD_REQ:
 		return TRACECMD_MSG_MAX_LEN - TRACECMD_MSG_HDR_LEN;
 	case MSG_CLOSE:
 	case MSG_FINMETA:
+	case MSG_SVR_RECORD_ACK:
 		break;
 	}
 
@@ -325,6 +328,8 @@ static int tracecmd_msg_make_body(u32 cmd, struct tracecmd_msg *msg)
 	case MSG_CLOSE:
 	case MSG_SENDMETA: /* meta data is not stored here. */
 	case MSG_FINMETA:
+	case MSG_SVR_RECORD_REQ:
+	case MSG_SVR_RECORD_ACK:
 		break;
 	}
 
@@ -754,7 +759,7 @@ error:
 
 int tracecmd_msg_svr_handle_record_req(int fd)
 {
-	u32 cmd;
+	be32 cmd;
 	char buf[TRACECMD_MSG_MAX_LEN];
 	int ret, size;
 	char *param;
@@ -778,7 +783,51 @@ int tracecmd_msg_svr_handle_record_req(int fd)
 
 	param = msg->data.rec_req.param;
 
-	plog("RECORD_REQUEST GOT: %s\n", param);
+	plog("RECORD_REQUEST GOT: '%s'\n", param);
+
+	/* send MSG_SVR_RECORD_ACK */
+	ret = tracecmd_msg_send(fd, MSG_SVR_RECORD_ACK);
+	if (ret < 0) {
+		plog("Failed to send MSG_SVR_RECORD_ACK\n");
+		return -1;
+	}
 
 	return 0;
+}
+
+int tracecmd_msg_svr_send_record_req(int fd, char *param)
+{
+	be32 param_len = strlen(param) + 1;
+	be32 cmd;
+	struct tracecmd_msg *msg;
+	int ret = 0;
+
+	ret = tracecmd_msg_create(MSG_SVR_RECORD_REQ, &msg);
+	if (ret)
+		return -1;
+
+	/* fill up message body */
+	msg->data.rec_req.size = htonl(param_len);
+	memcpy(msg->data.rec_req.param, param, param_len);
+
+	/* send */
+	ret = msg_do_write_check(fd, msg);
+	if (ret < 0)
+		goto out;
+
+	/* HACK: we did not free the msg, let's use the same buffer
+	 * for recving MSG_SVR_RECORD_ACK. */
+	ret = tracecmd_msg_wait_for_msg(fd, msg);
+	if (ret < 0)
+		goto out;
+
+	cmd = ntohl(msg->cmd);
+	if (cmd != MSG_SVR_RECORD_ACK) {
+		printf("Failed to get MSG_SVR_RECORD_ACK, but %u\n", cmd);
+		goto out;
+	}
+
+out:
+	free(msg);
+	return ret;
 }

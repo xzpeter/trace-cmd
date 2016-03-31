@@ -47,6 +47,7 @@
 
 #include "trace-local.h"
 #include "trace-msg.h"
+#include "trace-server.h"
 
 #define _STR(x) #x
 #define STR(x) _STR(x)
@@ -4161,16 +4162,20 @@ void trace_record (int argc, char **argv)
 	int data_flags = 0;
 	int debug = 0;
 	struct tracecmd_output *network_handle = NULL;
-
+	int ret;
 	int c;
 
 	init_instance(instance);
 
 	cpu_count = count_cpus();
 
-	if ((record = (strcmp(argv[1], "record") == 0)))
-		; /* do nothing */
-	else if ((start = strcmp(argv[1], "start") == 0))
+	if ((record = (strcmp(argv[1], "record") == 0))) {
+		/* Support "--connect" only in "trace-cmd record". */
+		if (!strcmp(argv[2], "--connect")) {
+			ret = tracecmd_server_connect(argc - 2, argv + 2);
+			exit(ret);
+		}
+	} else if ((start = strcmp(argv[1], "start") == 0))
 		; /* do nothing */
 	else if ((extract = strcmp(argv[1], "extract") == 0))
 		; /* do nothing */
