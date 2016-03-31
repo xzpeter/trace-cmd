@@ -2739,6 +2739,40 @@ static void check_protocol_version(int fd)
 	}
 }
 
+/**
+ * communicate_with_listener - talk with listener socket
+ * @sfd: the socket file handle to talk to
+ *
+ * Return the output handle if success, NULL if we need to
+ * retry. If we encountered any issue, we will quit the program
+ * directly for now.
+ */
+static struct tracecmd_output *communicate_with_listener(int sfd)
+{
+	struct tracecmd_output *handle;
+
+	if (proto_ver == V2_PROTOCOL) {
+		check_protocol_version(sfd);
+		if (proto_ver == V1_PROTOCOL) {
+			/* reconnect to the server for using the v1 protocol */
+			close(sfd);
+			return NULL;
+		}
+		communicate_with_listener_v2(sfd);
+	}
+
+	if (proto_ver == V1_PROTOCOL)
+		communicate_with_listener_v1(sfd);
+
+	/* Now create the handle through this socket */
+	handle = tracecmd_create_init_fd_glob(sfd, listed_events);
+
+	if (proto_ver == V2_PROTOCOL)
+		tracecmd_msg_finish_sending_metadata(sfd);
+
+	return handle;
+}
+
 static struct tracecmd_output *setup_network(void)
 {
 	struct addrinfo hints;
@@ -2788,26 +2822,10 @@ again:
 
 	freeaddrinfo(result);
 
-	if (proto_ver == V2_PROTOCOL) {
-		check_protocol_version(sfd);
-		if (proto_ver == V1_PROTOCOL) {
-			/* reconnect to the server for using the v1 protocol */
-			close(sfd);
-			goto again;
-		}
-		communicate_with_listener_v2(sfd);
-	}
+	handle = communicate_with_listener(sfd);
+	if (!handle)
+		goto again;
 
-	if (proto_ver == V1_PROTOCOL)
-		communicate_with_listener_v1(sfd);
-
-	/* Now create the handle through this socket */
-	handle = tracecmd_create_init_fd_glob(sfd, listed_events);
-
-	if (proto_ver == V2_PROTOCOL)
-		tracecmd_msg_finish_sending_metadata(sfd);
-
-	/* OK, we are all set, let'r rip! */
 	return handle;
 }
 
