@@ -86,7 +86,6 @@ static int clear_function_filters;
 
 static char *host;
 static int sfd;
-static struct tracecmd_output *network_handle;
 
 /* Max size to let a per cpu file get */
 static int max_kb;
@@ -2740,7 +2739,7 @@ static void check_protocol_version(int fd)
 	}
 }
 
-static void setup_network(void)
+static struct tracecmd_output *setup_network(void)
 {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
@@ -2748,6 +2747,7 @@ static void setup_network(void)
 	char *server;
 	char *port;
 	char *p;
+	struct tracecmd_output *handle;
 
 	if (!strchr(host, ':')) {
 		server = strdup("localhost");
@@ -2802,12 +2802,13 @@ again:
 		communicate_with_listener_v1(sfd);
 
 	/* Now create the handle through this socket */
-	network_handle = tracecmd_create_init_fd_glob(sfd, listed_events);
+	handle = tracecmd_create_init_fd_glob(sfd, listed_events);
 
 	if (proto_ver == V2_PROTOCOL)
 		tracecmd_msg_finish_sending_metadata(sfd);
 
 	/* OK, we are all set, let'r rip! */
+	return handle;
 }
 
 static void finish_network(void)
@@ -2825,9 +2826,6 @@ static void start_threads(enum trace_type type, int global)
 	int *brass = NULL;
 	int i = 0;
 	int ret;
-
-	if (host)
-		setup_network();
 
 	/* make a thread for every CPU we have */
 	pids = malloc(sizeof(*pids) * cpu_count * (buffers + 1));
@@ -4144,6 +4142,7 @@ void trace_record (int argc, char **argv)
 	int do_child = 0;
 	int data_flags = 0;
 	int debug = 0;
+	struct tracecmd_output *network_handle = NULL;
 
 	int c;
 
@@ -4695,6 +4694,10 @@ void trace_record (int argc, char **argv)
 
 	if (type & (TRACE_TYPE_RECORD | TRACE_TYPE_STREAM)) {
 		signal(SIGINT, finish);
+
+		if (host)
+			network_handle = setup_network();
+
 		if (!latency)
 			start_threads(type, global);
 	}
