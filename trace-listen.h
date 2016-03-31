@@ -20,6 +20,10 @@
 #ifndef _TRACE_LISTEN_H
 #define _TRACE_LISTEN_H
 
+extern FILE *logfp;
+
+void start_daemon(void);
+
 typedef int (*tracecmd_listen_handler)(const char *node,
 				       const char *port, int fd);
 

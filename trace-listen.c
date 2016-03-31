@@ -44,12 +44,12 @@
 
 #define VAR_RUN_DIR		VAR_DIR_Q(VAR_DIR) "/run"
 
-static char *default_output_dir = ".";
-static char *output_dir;
-static char *default_output_file = "trace";
-static char *output_file;
+#define DEFAULT_OUTPUT_DIR "."
+#define DEFAULT_OUTPUT_FILE "trace"
+static char *output_dir = DEFAULT_OUTPUT_DIR;
+static char *output_file = DEFAULT_OUTPUT_FILE;
 
-static FILE *logfp;
+FILE *logfp;
 
 static int debug;
 
@@ -908,7 +908,7 @@ void tracecmd_listen_start(char *port, tracecmd_listen_handler handler)
 	remove_pid_file();
 }
 
-static void start_daemon(void)
+void start_daemon(void)
 {
 	do_daemon = 1;
 
@@ -980,10 +980,10 @@ void trace_listen(int argc, char **argv)
 		usage(argv);
 
 	if (!output_file)
-		output_file = default_output_file;
+		output_file = DEFAULT_OUTPUT_FILE;
 
 	if (!output_dir)
-		output_dir = default_output_dir;
+		output_dir = DEFAULT_OUTPUT_DIR;
 
 	if (logfile) {
 		/* set the writes to a logfile instead */

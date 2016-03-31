@@ -432,6 +432,9 @@ int main (int argc, char **argv)
 	} else if (strcmp(argv[1], "listen") == 0) {
 		trace_listen(argc, argv);
 		exit(0);
+	} else if (strcmp(argv[1], "server") == 0) {
+		trace_server(argc, argv);
+		exit(0);
 	} else if (strcmp(argv[1], "split") == 0) {
 		trace_split(argc, argv);
 		exit(0);

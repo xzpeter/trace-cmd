@@ -228,6 +228,14 @@ static struct usage_help usage_help[] = {
 		"	   -l logfile to write messages to.\n"
 	},
 	{
+		"server",
+		"listen on a network socket for trace requests",
+		" %s server -p port[-D][-d dir][-l logfile]\n"
+		"          Creates a socket to listen for trace requests.\n"
+		"          -D create it in daemon mode.\n"
+		"          -l logfile to write messages to.\n"
+	},
+	{
 		"list",
 		"list the available events, plugins or options",
 		" %s list [-e [regex]][-t][-o][-f [regex]]\n"
