@@ -741,62 +741,7 @@ static int do_connection(int cfd, struct sockaddr_storage *peer_addr,
 	return 0;
 }
 
-static int *client_pids;
-static int saved_pids;
-static int size_pids;
-#define PIDS_BLOCK 32
-
-static void add_process(int pid)
-{
-	if (!client_pids) {
-		size_pids = PIDS_BLOCK;
-		client_pids = malloc(sizeof(*client_pids) * size_pids);
-		if (!client_pids)
-			pdie("allocating pids");
-	} else if (!(saved_pids % PIDS_BLOCK)) {
-		size_pids += PIDS_BLOCK;
-		client_pids = realloc(client_pids,
-				      sizeof(*client_pids) * size_pids);
-		if (!client_pids)
-			pdie("realloc of pids");
-	}
-	client_pids[saved_pids++] = pid;
-}
-
-static void remove_process(int pid)
-{
-	int i;
-
-	for (i = 0; i < saved_pids; i++) {
-		if (client_pids[i] == pid)
-			break;
-	}
-
-	if (i == saved_pids)
-		return;
-
-	saved_pids--;
-
-	if (saved_pids == i)
-		return;
-
-	memmove(&client_pids[i], &client_pids[i+1],
-		sizeof(*client_pids) * (saved_pids - i));
-
-}
-
-static void kill_clients(void)
-{
-	int status;
-	int i;
-
-	for (i = 0; i < saved_pids; i++) {
-		kill(client_pids[i], SIGINT);
-		waitpid(client_pids[i], &status, 0);
-	}
-
-	saved_pids = 0;
-}
+struct process_list global_proc_list;
 
 static void clean_up(int sig)
 {
@@ -807,7 +752,7 @@ static void clean_up(int sig)
 	do {
 		ret = waitpid(0, &status, WNOHANG);
 		if (ret > 0)
-			remove_process(ret);
+			remove_process(&global_proc_list, ret);
 	} while (ret > 0);
 }
 
@@ -831,7 +776,7 @@ static void do_accept_loop(int sfd, tracecmd_listen_handler handler)
 		pid = do_connection(cfd, &peer_addr,
 				    peer_addr_len, handler);
 		if (pid > 0)
-			add_process(pid);
+			add_process(&global_proc_list, pid);
 
 	} while (!done);
 }
@@ -903,7 +848,7 @@ void tracecmd_listen_start(char *port, tracecmd_listen_handler handler)
 
 	do_accept_loop(sfd, handler);
 
-	kill_clients();
+	kill_clients(&global_proc_list);
 
 	remove_pid_file();
 }

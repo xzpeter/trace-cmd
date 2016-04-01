@@ -369,4 +369,36 @@ void network_parse_hoststr(char *hoststr, char **host, char **port);
  */
 int network_connect_host(char *host, char *port);
 
+struct process_list {
+	int *client_pids;	/* array of client pids */
+	int saved_pids;		/* num of saved ones */
+	int size_pids;
+};
+
+/**
+ * add_process - add specific process to pid list
+ * @plist: process list to add
+ * @pid: new pid to add to list
+ *
+ * This will always success, or quit program if error happens.
+ */
+void add_process(struct process_list *plist, int pid);
+
+/**
+ * remove_process - remove specific process from pid list
+ * @plist: process list to delete pid
+ * @pid: new pid to delete from list
+ *
+ * This will always success.
+ */
+void remove_process(struct process_list *plist, int pid);
+
+/**
+ * kill_clients - kill all processes in the list
+ * @plist: process list to kill
+ *
+ * This will always success.
+ */
+void kill_clients(struct process_list *plist);
+
 #endif /* _TRACE_CMD_H */

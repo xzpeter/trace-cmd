@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <signal.h>
 
 #include "trace-cmd.h"
 
@@ -1675,4 +1676,59 @@ int network_connect_host(char *server, char *port)
 	freeaddrinfo(result);
 
 	return sfd;
+}
+
+#define PIDS_BLOCK 32
+
+void add_process(struct process_list *plist, int pid)
+{
+	int size;
+	if (!plist->client_pids) {
+		plist->size_pids = PIDS_BLOCK;
+		size = sizeof(*plist->client_pids) * plist->size_pids;
+		plist->client_pids = malloc(size);
+		if (!plist->client_pids)
+			pdie("allocating pids");
+	} else if (!(plist->saved_pids % PIDS_BLOCK)) {
+		plist->size_pids += PIDS_BLOCK;
+		size = sizeof(*plist->client_pids) * plist->size_pids;
+		plist->client_pids = realloc(plist->client_pids, size);
+		if (!plist->client_pids)
+			pdie("realloc of pids");
+	}
+	plist->client_pids[plist->saved_pids++] = pid;
+}
+
+void remove_process(struct process_list *plist, int pid)
+{
+	int i;
+
+	for (i = 0; i < plist->saved_pids; i++) {
+		if (plist->client_pids[i] == pid)
+			break;
+	}
+
+	if (i == plist->saved_pids)
+		return;
+
+	plist->saved_pids--;
+
+	if (plist->saved_pids == i)
+		return;
+
+	memmove(&plist->client_pids[i], &plist->client_pids[i+1],
+		sizeof(*plist->client_pids) * (plist->saved_pids - i));
+}
+
+void kill_clients(struct process_list *plist)
+{
+	int status;
+	int i;
+
+	for (i = 0; i < plist->saved_pids; i++) {
+		kill(plist->client_pids[i], SIGINT);
+		waitpid(plist->client_pids[i], &status, 0);
+	}
+
+	plist->saved_pids = 0;
 }
