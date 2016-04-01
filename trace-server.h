@@ -27,4 +27,6 @@
  */
 int tracecmd_server_connect (int argc, char **argv);
 
+#define  TCMD_SERVER_FAKE_HOST  ("TCMD_SVR_FAKE_HOST")
+
 #endif /* _TRACE_SERVER_H */

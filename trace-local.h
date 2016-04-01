@@ -52,7 +52,7 @@ void show_file(const char *name);
 struct tracecmd_input *read_trace_header(const char *file);
 int read_trace_files(void);
 
-void trace_record(int argc, char **argv);
+void trace_record(int argc, char **argv, int remote_sock);
 
 void trace_report(int argc, char **argv);
 

@@ -86,7 +86,7 @@ static int buffers;
 /* Clear all function filters */
 static int clear_function_filters;
 
-static char *host;
+char *host;
 static int sfd;
 
 /* Max size to let a per cpu file get */
@@ -4099,7 +4099,7 @@ enum {
 	OPT_date	= 255,
 };
 
-void trace_record (int argc, char **argv)
+void trace_record (int argc, char **argv, int remote_sock)
 {
 	const char *plugin = NULL;
 	const char *output = NULL;
@@ -4687,8 +4687,20 @@ void trace_record (int argc, char **argv)
 	if (type & (TRACE_TYPE_RECORD | TRACE_TYPE_STREAM)) {
 		signal(SIGINT, finish);
 
-		if (host)
-			network_handle = setup_network();
+		if (host) {
+			if (remote_sock != -1) {
+				/* we have been provided with
+				 * connected socket fd, we use
+				 * it directly. */
+				network_handle = \
+					communicate_with_listener(remote_sock);
+			} else {
+				network_handle = setup_network();
+			}
+			if (!network_handle) {
+				pdie("failed to init network handle");
+			}
+		}
 
 		if (!latency)
 			start_threads(type, global);

@@ -280,12 +280,13 @@ int tracecmd_msg_send_init_data(int fd);
 int tracecmd_msg_metadata_send(int fd, const char *buf, int size);
 int tracecmd_msg_finish_sending_metadata(int fd);
 void tracecmd_msg_send_close_msg(void);
+int tracecmd_msg_svr_send_record_req(int fd, char *param);
 
 /* for server */
 int tracecmd_msg_initial_setting(int fd, int *cpus, int *pagesize);
 int tracecmd_msg_send_port_array(int fd, int total_cpus, int *ports);
 int tracecmd_msg_collect_metadata(int ifd, int ofd);
-int tracecmd_msg_svr_handle_record_req(int fd);
+char *tracecmd_msg_svr_handle_record_req(int fd);
 
 /* msg debugging */
 void tracecmd_msg_set_debug(int debug);
@@ -402,8 +403,18 @@ void remove_process(struct process_list *plist, int pid);
  */
 void kill_clients(struct process_list *plist);
 
+/**
+ * process_list_empty - whether process list is empty
+ * @plist: process list to check
+ *
+ * Returns non-zero if list empty, otherwise returns zero.
+ */
+int process_list_empty(struct process_list *plist);
+
 int do_fork(int cfd);
 
 void signal_setup(int sig, sighandler_t handle);
+
+extern char *host;
 
 #endif /* _TRACE_CMD_H */

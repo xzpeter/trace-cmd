@@ -1735,6 +1735,11 @@ void kill_clients(struct process_list *plist)
 	plist->saved_pids = 0;
 }
 
+int process_list_empty(struct process_list *plist)
+{
+	return plist->saved_pids == 0;
+}
+
 void signal_setup(int sig, sighandler_t handle)
 {
 	struct sigaction action;

@@ -757,7 +757,14 @@ error:
 	return ret;
 }
 
-int tracecmd_msg_svr_handle_record_req(int fd)
+/* Returns param string for "record". E.g.:
+ *
+ * "-e syscall:sys_enter_open -l hrtimer_interrupt"
+ *
+ * Now it's still hacky. We can enhance the protocol and the
+ * interface in the future. Parameter needs to be freed after use.
+ */
+char *tracecmd_msg_svr_handle_record_req(int fd)
 {
 	be32 cmd;
 	char buf[TRACECMD_MSG_MAX_LEN];
@@ -770,7 +777,7 @@ int tracecmd_msg_svr_handle_record_req(int fd)
 	cmd = ntohl(msg->cmd);
 	if (cmd != MSG_SVR_RECORD_REQ) {
 		plog("trace-cmd server received unknown cmd %d\n", cmd);
-		return -1;
+		return NULL;
 	}
 
 	/* We got a tracecmd msg with a tracing request */
@@ -778,7 +785,7 @@ int tracecmd_msg_svr_handle_record_req(int fd)
 	size = ntohl(msg->size);
 	if (size <= TRACECMD_MSG_SVR_RECORD_MIN_LEN) {
 		plog("MSG_SVR_RECORD_REQ size %u too small\n", size);
-		return -1;
+		return NULL;
 	}
 
 	param = msg->data.rec_req.param;
@@ -789,10 +796,10 @@ int tracecmd_msg_svr_handle_record_req(int fd)
 	ret = tracecmd_msg_send(fd, MSG_SVR_RECORD_ACK);
 	if (ret < 0) {
 		plog("Failed to send MSG_SVR_RECORD_ACK\n");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return strdup(param);
 }
 
 int tracecmd_msg_svr_send_record_req(int fd, char *param)

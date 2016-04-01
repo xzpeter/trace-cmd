@@ -491,7 +491,7 @@ int main (int argc, char **argv)
 		   strcmp(argv[1], "profile") == 0 ||
 		   strcmp(argv[1], "restart") == 0 ||
 		   strcmp(argv[1], "reset") == 0) {
-		trace_record(argc, argv);
+		trace_record(argc, argv, -1);
 		exit(0);
 
 	} else if (strcmp(argv[1], "stat") == 0) {
