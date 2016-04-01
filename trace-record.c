@@ -4291,6 +4291,15 @@ void trace_record (int argc, char **argv, int remote_sock)
 	} else
 		usage(argv);
 
+	/* This command force reset getopt_long() status to init
+	 * value.  Normally, this is inited by getopt*() library
+	 * itself, however, trace_record() is now possible to be
+	 * called by other subcommands, or say, we might have called
+	 * getopt*() already before reaching here. So we need this
+	 * force reset. For more information on resetting getopt*()
+	 * status, please check "man getopt". */
+	optind = 1;
+
 	for (;;) {
 		int option_index = 0;
 		const char *opts;
