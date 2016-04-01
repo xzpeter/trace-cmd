@@ -48,6 +48,7 @@
 #include "trace-local.h"
 #include "trace-msg.h"
 #include "trace-server.h"
+#include "trace-cmd.h"
 
 #define _STR(x) #x
 #define STR(x) _STR(x)
@@ -2776,56 +2777,24 @@ static struct tracecmd_output *communicate_with_listener(int sfd)
 
 static struct tracecmd_output *setup_network(void)
 {
-	struct addrinfo hints;
-	struct addrinfo *result, *rp;
-	int sfd, s;
-	char *server;
-	char *port;
-	char *p;
+	int sfd;
+	char *host_p, *port_p;
 	struct tracecmd_output *handle;
 
-	if (!strchr(host, ':')) {
-		server = strdup("localhost");
-		if (!server)
-			die("alloctating server");
-		port = host;
-		host = server;
-	} else {
-		host = strdup(host);
-		if (!host)
-			die("alloctating server");
-		server = strtok_r(host, ":", &p);
-		port = strtok_r(NULL, ":", &p);
-	}
+	network_parse_hoststr(host, &host_p, &port_p);
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+	do {
+		sfd = network_connect_host(host_p, port_p);
+		handle = communicate_with_listener(sfd);
+	} while (!handle); /* we may need to try older versions. */
 
-again:
-	s = getaddrinfo(server, port, &hints, &result);
-	if (s != 0)
-		die("getaddrinfo: %s", gai_strerror(s));
+	/* Update global "host" variable to be the hostname of
+	 * server. This is required in other part of codes (TODO:
+	 * we'd better remove the global "host" finally) */
+	host = host_p;
 
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		sfd = socket(rp->ai_family, rp->ai_socktype,
-			     rp->ai_protocol);
-		if (sfd == -1)
-			continue;
-
-		if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
-			break;
-		close(sfd);
-	}
-
-	if (!rp)
-		die("Can not connect to %s:%s", server, port);
-
-	freeaddrinfo(result);
-
-	handle = communicate_with_listener(sfd);
-	if (!handle)
-		goto again;
+	/* port_p is not useful any more. */
+	free(port_p);
 
 	return handle;
 }

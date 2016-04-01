@@ -30,6 +30,9 @@
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include "trace-cmd.h"
 
@@ -1620,4 +1623,56 @@ char *tracecmd_get_tracing_file(const char *name)
 void tracecmd_put_tracing_file(char *name)
 {
 	free(name);
+}
+
+void network_parse_hoststr(char *hoststr, char **host_p, char **port_p)
+{
+	char *host, *port, *p;
+	if (!strchr(hoststr, ':')) {
+		host = strdup("localhost");
+		if (!host)
+			die("alloctating server");
+		port = strdup(hoststr);
+	} else {
+		host = strdup(hoststr);
+		if (!host)
+			die("alloctating server");
+		host = strtok_r(host, ":", &p);
+		port = strdup(strtok_r(NULL, ":", &p));
+	}
+	*host_p = host;
+	*port_p = port;
+}
+
+int network_connect_host(char *server, char *port)
+{
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
+	int sfd, s;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	s = getaddrinfo(server, port, &hints, &result);
+	if (s != 0)
+		die("getaddrinfo: %s", gai_strerror(s));
+
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		sfd = socket(rp->ai_family, rp->ai_socktype,
+			     rp->ai_protocol);
+		if (sfd == -1)
+			continue;
+
+		if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+			break;
+		close(sfd);
+	}
+
+	if (!rp)
+		die("Can not connect to %s:%s", server, port);
+
+	freeaddrinfo(result);
+
+	return sfd;
 }

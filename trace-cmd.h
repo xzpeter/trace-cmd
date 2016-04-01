@@ -349,4 +349,24 @@ void *tracecmd_record_page(struct tracecmd_input *handle,
 void *tracecmd_record_offset(struct tracecmd_input *handle,
 			     struct pevent_record *record);
 
+/**
+ * network_parse_hoststr - parse hoststr into host and port
+ * @hoststr: host and port pair, e.g., "domain.com:12345"
+ * @host: will be set to pointer to host info, need to be freed after use
+ * @port: will be set to pointer to port info, need to be freed after use
+ *
+ * Always success. Quit program if parse error.
+ */
+void network_parse_hoststr(char *hoststr, char **host, char **port);
+
+/**
+ * network_connect_host - connect to host socket
+ * @host: host to connect
+ * @port: port to connect
+ *
+ * Return a socket fd if successful, or program will quit (TODO:
+ * maybe nicer to make it return -1).
+ */
+int network_connect_host(char *host, char *port);
+
 #endif /* _TRACE_CMD_H */
