@@ -21,6 +21,7 @@
 #define _TRACE_CMD_H
 
 #include <stdlib.h>
+#include <signal.h>
 #include "event-utils.h"
 #include "event-parse.h"
 
@@ -400,5 +401,9 @@ void remove_process(struct process_list *plist, int pid);
  * This will always success.
  */
 void kill_clients(struct process_list *plist);
+
+int do_fork(int cfd);
+
+void signal_setup(int sig, sighandler_t handle);
 
 #endif /* _TRACE_CMD_H */

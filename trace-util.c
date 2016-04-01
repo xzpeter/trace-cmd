@@ -32,10 +32,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netdb.h>
 #include <signal.h>
 
 #include "trace-cmd.h"
+#include "trace-msg.h"
 
 #define LOCAL_PLUGIN_DIR ".trace-cmd/plugins"
 #define TRACEFS_PATH "/sys/kernel/tracing"
@@ -1731,4 +1733,46 @@ void kill_clients(struct process_list *plist)
 	}
 
 	plist->saved_pids = 0;
+}
+
+void signal_setup(int sig, sighandler_t handle)
+{
+	struct sigaction action;
+
+	sigaction(sig, NULL, &action);
+	/* Make accept return EINTR */
+	action.sa_flags &= ~SA_RESTART;
+	action.sa_handler = handle;
+	sigaction(sig, &action, NULL);
+}
+
+extern int debug;
+
+void __attribute((weak)) finish(int sig)
+{
+	done = true;
+}
+
+int do_fork(int cfd)
+{
+	pid_t pid;
+
+	/* in debug mode, we do not fork off children */
+	if (debug)
+		return 0;
+
+	pid = fork();
+	if (pid < 0) {
+		warning("failed to create child");
+		return -1;
+	}
+
+	if (pid > 0) {
+		close(cfd);
+		return pid;
+	}
+
+	signal_setup(SIGINT, finish);
+
+	return 0;
 }

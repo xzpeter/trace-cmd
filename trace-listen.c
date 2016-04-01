@@ -51,7 +51,7 @@ static char *output_file = DEFAULT_OUTPUT_FILE;
 
 FILE *logfp;
 
-static int debug;
+int debug;
 
 static int backlog = 5;
 
@@ -80,17 +80,6 @@ static void put_temp_file(char *file)
 }
 
 #define MAX_PATH 1024
-
-static void signal_setup(int sig, sighandler_t handle)
-{
-	struct sigaction action;
-
-	sigaction(sig, NULL, &action);
-	/* Make accept return EINTR */
-	action.sa_flags &= ~SA_RESTART;
-	action.sa_handler = handle;
-	sigaction(sig, &action, NULL);
-}
 
 static void delete_temp_file(const char *host, const char *port, int cpu)
 {
@@ -678,30 +667,6 @@ int tracecmd_listen_process_client(const char *node,
 	destroy_all_readers(cpus, pid_array, node, port);
 
 	return ret;
-}
-
-static int do_fork(int cfd)
-{
-	pid_t pid;
-
-	/* in debug mode, we do not fork off children */
-	if (debug)
-		return 0;
-
-	pid = fork();
-	if (pid < 0) {
-		warning("failed to create child");
-		return -1;
-	}
-
-	if (pid > 0) {
-		close(cfd);
-		return pid;
-	}
-
-	signal_setup(SIGINT, finish);
-
-	return 0;
 }
 
 static int do_connection(int cfd, struct sockaddr_storage *peer_addr,
