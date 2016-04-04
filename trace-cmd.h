@@ -365,11 +365,13 @@ void network_parse_hoststr(char *hoststr, char **host, char **port);
  * network_connect_host - connect to host socket
  * @host: host to connect
  * @port: port to connect
+ * @sock_type: type of socket to use. Can be: SOCK_STREAM for TCP,
+ *             SOCK_DGRAM for UDP. Default is TCP.
  *
  * Return a socket fd if successful, or program will quit (TODO:
  * maybe nicer to make it return -1).
  */
-int network_connect_host(char *host, char *port);
+int network_connect_host(char *host, char *port, int sock_type);
 
 struct process_list {
 	int *client_pids;	/* array of client pids */

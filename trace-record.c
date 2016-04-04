@@ -2462,39 +2462,14 @@ static void flush(int sig)
 
 static void connect_port(int cpu)
 {
-	struct addrinfo hints;
-	struct addrinfo *results, *rp;
-	int s;
+	int fd;
 	char buf[BUFSIZ];
 
 	snprintf(buf, BUFSIZ, "%d", client_ports[cpu]);
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = use_tcp ? SOCK_STREAM : SOCK_DGRAM;
-
-	s = getaddrinfo(host, buf, &hints, &results);
-	if (s != 0)
-		die("connecting to %s server %s:%s",
-		    use_tcp ? "TCP" : "UDP", host, buf);
-
-	for (rp = results; rp != NULL; rp = rp->ai_next) {
-		sfd = socket(rp->ai_family, rp->ai_socktype,
-			     rp->ai_protocol);
-		if (sfd == -1)
-			continue;
-		if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
-			break;
-		close(sfd);
-	}
-
-	if (rp == NULL)
-		die("Can not connect to %s server %s:%s",
-		    use_tcp ? "TCP" : "UDP", host, buf);
-
-	freeaddrinfo(results);
-
-	client_ports[cpu] = sfd;
+	fd = network_connect_host(host, buf,
+				  use_tcp ? SOCK_STREAM : SOCK_DGRAM);
+	client_ports[cpu] = fd;
 }
 
 static void set_prio(int prio)
@@ -2784,7 +2759,7 @@ static struct tracecmd_output *setup_network(void)
 	network_parse_hoststr(host, &host_p, &port_p);
 
 	do {
-		sfd = network_connect_host(host_p, port_p);
+		sfd = network_connect_host(host_p, port_p, SOCK_STREAM);
 		handle = communicate_with_listener(sfd);
 	} while (!handle); /* we may need to try older versions. */
 

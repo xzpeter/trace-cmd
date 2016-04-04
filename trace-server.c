@@ -274,7 +274,7 @@ tracecmd_server_handle_requests(struct list_head *conn_list)
 		printf("Connecting to host '%s' port '%s': ",
 		       p->host, p->port);
 
-		sfd = network_connect_host(p->host, p->port);
+		sfd = network_connect_host(p->host, p->port, SOCK_STREAM);
 
 		printf("connected\n");
 

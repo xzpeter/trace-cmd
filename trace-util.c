@@ -1647,7 +1647,7 @@ void network_parse_hoststr(char *hoststr, char **host_p, char **port_p)
 	*port_p = port;
 }
 
-int network_connect_host(char *server, char *port)
+int network_connect_host(char *server, char *port, int sock_type)
 {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
@@ -1655,7 +1655,15 @@ int network_connect_host(char *server, char *port)
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+	/* Default is TCP */
+	hints.ai_socktype = sock_type ? sock_type : SOCK_STREAM;
+
+	/* HACK: we seem to have a bug for getaddrinfo() when
+	 * working with "localhost". Let's use 127.0.0.1 explicitly
+	 * if we are to connect to "localhost". */
+	if (!strcmp(server, "localhost")) {
+		server = "127.0.0.1";
+	}
 
 	s = getaddrinfo(server, port, &hints, &result);
 	if (s != 0)
