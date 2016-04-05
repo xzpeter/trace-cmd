@@ -4708,10 +4708,18 @@ void trace_record (int argc, char **argv, int remote_sock)
 			/* We don't ptrace ourself */
 			if (do_ptrace && filter_pid >= 0)
 				ptrace_attach(filter_pid);
-			/* sleep till we are woken with Ctrl^C */
-			printf("Hit Ctrl^C to stop recording\n");
-			while (!finished)
-				trace_or_sleep(type);
+			if (remote_sock != -1) {
+				/* We are possibly running "trace-cmd
+				 * server", we will keep recording until
+				 * remote client sends MSG_CLOSE. */
+				tracecmd_msg_svr_wait_close(remote_sock);
+				printf("Received remote close, shutting down\n");
+			} else {
+				/* sleep till we are woken with Ctrl^C */
+				printf("Hit Ctrl^C to stop recording\n");
+				while (!finished)
+					trace_or_sleep(type);
+			}
 		}
 
 		disable_tracing();

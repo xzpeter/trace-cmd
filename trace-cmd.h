@@ -281,12 +281,14 @@ int tracecmd_msg_metadata_send(int fd, const char *buf, int size);
 int tracecmd_msg_finish_sending_metadata(int fd);
 void tracecmd_msg_send_close_msg(void);
 int tracecmd_msg_svr_send_record_req(int fd, char *param);
+int tracecmd_msg_svr_send_close(int fd);
 
 /* for server */
 int tracecmd_msg_initial_setting(int fd, int *cpus, int *pagesize);
 int tracecmd_msg_send_port_array(int fd, int total_cpus, int *ports);
 int tracecmd_msg_collect_metadata(int ifd, int ofd);
 char *tracecmd_msg_svr_handle_record_req(int fd);
+int tracecmd_msg_svr_wait_close(int fd);
 
 /* msg debugging */
 void tracecmd_msg_set_debug(int debug);

@@ -732,8 +732,10 @@ int tracecmd_msg_collect_metadata(int ifd, int ofd)
 
 	/* check the finish message of the client */
 	while (!done) {
-		ret = tracecmd_msg_recv(ifd, msg);
-		if (ret < 0) {
+		ret = tracecmd_msg_recv_wait(ifd, msg);
+		if (ret == -ETIMEDOUT || ret == -EINTR) {
+			continue;
+		} else if (ret < 0) {
 			warning("reading client");
 			return ret;
 		}
@@ -837,4 +839,30 @@ int tracecmd_msg_svr_send_record_req(int fd, char *param)
 out:
 	free(msg);
 	return ret;
+}
+
+int tracecmd_msg_svr_wait_close(int fd)
+{
+	char buf[TRACECMD_MSG_MAX_LEN];
+	struct tracecmd_msg *msg = (struct tracecmd_msg *)buf;
+	int ret;
+	be32 cmd;
+
+	do {
+		/* This is normal, we will wait until peer sends
+		 * MSG_CLOSE. */
+		ret = tracecmd_msg_recv_wait(fd, msg);
+	} while (ret == -ETIMEDOUT || ret == -EINTR);
+
+	cmd = ntohl(msg->cmd);
+	if (cmd != MSG_CLOSE) {
+		die("Failed to get MSG_CLOSE, but %u\n", cmd);
+	}
+
+	return ret;
+}
+
+int tracecmd_msg_svr_send_close(int fd)
+{
+	return tracecmd_msg_send(fd, MSG_CLOSE);
 }

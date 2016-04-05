@@ -46,6 +46,11 @@ struct tracecmd_record_req {
 	char *param;
 };
 
+static void stop_remote_trace_handler(int sig)
+{
+	done = 1;
+}
+
 static int param_count_spaces(char *p)
 {
 	int count = 0;
@@ -251,6 +256,10 @@ tracecmd_server_client_spawn(int fd, struct tracecmd_record_req *p)
 		       p->hoststr);
 	}
 
+	/* Trace data collected. We need to notify peer to stop. */
+	printf("notifying peer server side to stop session\n");
+	tracecmd_msg_svr_send_close(fd);
+
 	printf("child for %s quit\n", p->hoststr);
 	exit(0);
 }
@@ -264,6 +273,9 @@ tracecmd_server_handle_requests(struct list_head *conn_list)
 	/* Before doing anything, we need to overwrite the original
 	 * SIGCHLD handler, to handle our own child list. */
 	signal_setup(SIGCHLD, clients_clean_up);
+
+	signal_setup(SIGINT, stop_remote_trace_handler);
+	signal_setup(SIGTERM, stop_remote_trace_handler);
 
 	/* Firstly, we try to connect to all the targets. For each
 	 * connect, we will spawn one child to handle further
